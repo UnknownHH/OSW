@@ -36,9 +36,18 @@ const cardFieldOptions = [
   {key:'clicks', label:'点击总量', val:r=>fmt(r.clicks)},
   {key:'searchViews', label:'搜索浏览量', val:r=>fmt(r.searchViews)},
   {key:'created', label:'创建时间', val:r=>r.age>=9999 ? '-' : `已创建 ${r.age} 天`},
-  {key:'followerPrices', label:'跟卖最低/最高价', val:r=>`${r.followerMinPrice?fmt(r.followerMinPrice):'-'}~ ${r.followerMaxPrice?fmt(r.followerMaxPrice):'-'}`, title:r=>`${r.followerMinPrice?fmt(r.followerMinPrice):'-'} / ${r.followerMaxPrice?fmt(r.followerMaxPrice):'-'}`},
+  {key:'followerPrices', label:'跟卖最低/最高价', val: r => {const range = parseFollowerRange(r.followerPriceRange);return (range.min || range.max) ? `${range.min}~${range.max}` : '-';},html: r => {const range = parseFollowerRange(r.followerPriceRange);return (range.min || range.max) ? esc(String(range.min)) + '~' + esc(String(range.max)) : '-';},title: r => {
+  const range = parseFollowerRange(r.followerPriceRange);
+  const rate = state.exchangeRate || 1;
+  const cnyMin = range.min ? (range.min / rate) : 0;
+  const cnyMax = range.max ? (range.max / rate) : 0;
+  return `≈¥${fmt(cnyMin,2)}~¥${fmt(cnyMax,2)}`;
+}},
   {key:'weight', label:'重量', val:r=>r.weight ? `${fmt(r.weight)}g` : '-'},
-  {key:'ratingReviews', label:'评分/评论', val:r=>`${r.rating?fmt(r.rating,1):'-'} / ${fmt(r.reviews)}`},
+  {key:'dimensions', label:'长宽高', val: r => {const l = r.length, w = r.width, h = r.height;if (!l && !w && !h) return '-';return `${l || 0} × ${w || 0} × ${h || 0}`;},html: r => {const l = r.length, w = r.width, h = r.height;if (!l && !w && !h) return '-';return `${esc(l || 0)} × ${esc(w || 0)} × ${esc(h || 0)}`;},title: r => `长 ${r.length || 0} mm，宽 ${r.width || 0} mm，高 ${r.height || 0} mm`},
+  {key:'ratingReviews', label:'评分/评论',
+  val: r => `${r.rating ? fmt(r.rating,1) : '-'} · ${fmt(r.reviews)}`,
+  html: r => `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" style="color:#f59e0b;flex-shrink:0;margin-right:2px;vertical-align:middle;"><path fill="currentColor" d="M8 .5c.736 0 1.224.871 2.202 2.613.216.385.404.865.771 1.13.35.25.84.275 1.252.35 1.963.357 2.945.536 3.203 1.215q.027.074.046.151c.174.705-.526 1.318-1.93 2.76-.439.452-.638.666-.726.959-.081.27-.042.564.036 1.15.27 2.017.401 3.136-.175 3.592-1.033.816-2.7-.618-3.632-1.049C8.53 13.133 8.274 13 8 13s-.532.133-1.047.371c-.933.43-2.6 1.866-3.632 1.049-.577-.457-.44-1.575-.17-3.592.078-.586.117-.88.036-1.15-.087-.292-.287-.507-.726-.958C1.057 7.277.353 6.664.526 5.959q.019-.077.047-.151c.257-.679 1.239-.858 3.202-1.215.413-.075.902-.1 1.252-.35.367-.265.555-.745.77-1.13C6.776 1.372 7.265.5 8 .5"></path></svg> ${esc(r.rating ? fmt(r.rating,1) : '-')} · <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0; margin:0 2px; vertical-align:middle;"><path d="m9.667,1.35c5,0 5.833,1.25 5.833,6.25c0,4.864 -0.833,5.417 -5.833,5.417l-5,0c-0.576,0.854 -1.518,1.666 -2.5,1.666c-1.667,0 -1.667,-4.583 -1.667,-7.083c0,-5 0.833,-6.25 5.833,-6.25l3.334,0z" fill="#028dcc"/></svg>${esc(fmt(r.reviews))}`},
   {key:'revenue', label:'月销售额', val:r=>fmt(r.revenue)},
   {key:'followers', label:'跟卖数', val:r=>fmt(r.followers)}
 ];
@@ -94,7 +103,18 @@ function findUrl(row, preferProduct=false){const vals=Object.values(row).map(tex
 function get(row,key){return state.map[key] ? row[state.map[key]] : '';}
 function getNum(row,key){return cleanNum(get(row,key));}
 function ageDays(v){const s=text(v); const m=s.match(/已创建\s*(\d+)\s*天/); if(m) return Number(m[1]); const d=s.match(/(20\d{2})[.\-/](\d{1,2})[.\-/](\d{1,2})/); if(d){const dt=new Date(+d[1],+d[2]-1,+d[3]); if(!isNaN(dt)) return Math.max(0,Math.round((Date.now()-dt.getTime())/86400000));} return 9999;}
-function parseFollowerRange(v){const nums=String(v||'').replace(/,/g,'.').match(/\d+(?:\.\d+)?/g)||[]; const arr=nums.map(Number).filter(n=>!isNaN(n)); return {min:arr[0]||0,max:arr[1]||arr[0]||0};}
+function parseFollowerRange(v){
+  // 清理特殊空格、货币符号等
+  const clean = String(v||'')
+    .replace(/[\u00A0\u2009\u202F\u2000-\u200A]/g, ' ')  // 各种空格
+    .replace(/\s+/g, '')              // 去除普通空格
+    .replace(/₽/g, '')               // 去掉卢布符号
+    .replace(/,/g, '.');             // 逗号转小数点（如有）
+  const parts = clean.split('/');
+  const min = parts[0] ? parseFloat(parts[0].match(/-?\d+(\.\d+)?/)?.[0]) || 0 : 0;
+  const max = parts[1] ? parseFloat(parts[1].match(/-?\d+(\.\d+)?/)?.[0]) || 0 : 0;
+  return { min, max: max || min };
+}
 function clamp(n,min=0,max=100){return Math.max(min,Math.min(max,n));}
 function scoreRow(r){
   const weekly=getNum(r,'weekly'), monthly=getNum(r,'monthly'), revenue=getNum(r,'revenue'), followers=getNum(r,'followers'), adPct=getNum(r,'adPct'), reviews=getNum(r,'reviews'), impressions=getNum(r,'impressions'), price=getNum(r,'priceRub')||getNum(r,'priceRmb');
@@ -142,7 +162,7 @@ function fmt(n,d=0){n=Number(n)||0; return n.toLocaleString('zh-CN',{maximumFrac
 function rubPrice(r){return r.priceRub || (state.exchangeRate ? r.priceRmb*state.exchangeRate : 0);}
 function cnyPrice(r){return r.priceRmb || (state.exchangeRate ? rubPrice(r)/state.exchangeRate : 0);}
 function fmtRub(r){const v=rubPrice(r); return v ? '₽ '+fmt(v,0) : '₽ -';}
-function fmtCny(r){const v=cnyPrice(r); return v ? '≈ ¥ '+fmt(v,2) : '≈ ¥ -';}
+function fmtCny(r){const v=cnyPrice(r); return v ? '¥ '+fmt(v,2) : '≈ ¥ -';}
 function fmtOriginalRub(r){const v=r.originalRub||0, cur=rubPrice(r)||0; return v && (!cur || Math.round(v)!==Math.round(cur)) ? '₽ '+fmt(v,0) : '';}
 function orderedCardFieldOptions(){
   const byKey = new Map(cardFieldOptions.map(o=>[o.key,o]));
@@ -158,7 +178,29 @@ function renderCards(){
       <div class="pic">${r.image?`<img loading="lazy" src="${esc(r.image)}" onerror="this.remove();this.parentNode.insertAdjacentHTML('beforeend','<span class=no-img>图片不可用</span>')">`:'<span class="no-img">无图片</span>'}<span class="score-badge">${r.score}</span></div>
       <div class="card-body">
         <div class="title" title="${esc(r.title)}">${esc(r.title)}</div>
-        <div class="price-block"><div class="price-line"><span class="price-left"><span class="rub-price">${fmtRub(r)}</span>${fmtOriginalRub(r)?`<del class="origin-price">${fmtOriginalRub(r)}</del>`:""}</span><span class="cny-price">${fmtCny(r)}</span></div><div class="price-divider"></div></div>
+        <div class="price-block"><div class="price-line"><span class="price-left">${
+  (() => {
+    const range = parseFollowerRange(r.followerPriceRange);
+    const min = range.min, max = range.max;
+    let minHtml = '', maxHtml = '';
+    if (min) {
+      minHtml = `<span class="follower-min-price">${fmt(min,0)}</span> <span class="price-sep">&lt;</span> `;
+    }
+    if (max) {
+      maxHtml = ` <span class="price-sep">&lt;</span> <span class="follower-max-price">${fmt(max,0)}</span>`;
+    }
+    return minHtml;
+  })()
+}<span class="rub-price">${fmtRub(r)}</span>${
+  (() => {
+    const range = parseFollowerRange(r.followerPriceRange);
+    const max = range.max;
+    if (max) {
+      return ` <span class="price-sep">&lt;</span> <span class="follower-max-price">${fmt(max,0)}</span>`;
+    }
+    return '';
+  })()
+}</span><span class="cny-price">${fmtCny(r)}</span></div><div class="price-divider"></div></div>
         <div class="metrics">${metricHtml(r)}</div>
         <div class="meta">${r.tags.slice(0,3).map(t=>`<span class="pill ${t[1]}">${t[0]}</span>`).join('')}<span class="pill">${esc(r.category.split('/').slice(-1)[0])}</span></div>
         <div class="card-actions"><button onclick="showDetail(${r.idx})">详情</button>${r.link?`<a href="${esc(r.link)}" target="_blank" rel="noreferrer">打开 OZON</a>`:'<a class="disabled">无链接</a>'}</div>

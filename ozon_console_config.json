@@ -1,7 +1,7 @@
 {
   "app": "ozon_selection_workbench",
   "version": "v5-defaultconfig",
-  "savedAt": "2026-05-12T18:27:03.262Z",
+  "savedAt": "2026-05-12T22:13:17.811Z",
   "exchangeRate": "12.5",
   "sortBy": "score-desc",
   "view": "card",
@@ -35,20 +35,21 @@
   },
   "visibleFields": [
     "ratingReviews",
+    "turnoverDynamic",
     "adPct",
     "adDays",
-    "turnoverDynamic",
     "sales",
     "conv",
+    "followers",
+    "followerPrices",
+    "revenue",
+    "created",
     "impressions",
     "displayConv",
-    "clicks",
     "searchViews",
-    "created",
-    "followerPrices",
+    "clicks",
     "weight",
-    "revenue",
-    "followers"
+    "dimensions"
   ],
   "cardFieldOrder": [
     "brand",
@@ -66,7 +67,8 @@
     "displayConv",
     "searchViews",
     "clicks",
-    "weight"
+    "weight",
+    "dimensions"
   ],
   "mapping": {
     "sku": "SKU",
