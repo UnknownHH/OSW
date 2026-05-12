@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OZON 本地选品工作台</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="mobile-mask" id="mobileMask"></div>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="选品控制台">
+      <div class="side-head">
+        <div>
+          <div class="eyebrow">OZON LOCAL</div>
+          <h1>选品控制台</h1>
+        </div>
+      </div>
+      <section class="panel stats-panel">
+        <h2>统计概览</h2>
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat"><span>商品数</span><b>0</b></div>
+          <div class="stat"><span>平均机会分</span><b>0</b></div>
+          <div class="stat"><span>周销量合计</span><b>0</b></div>
+          <div class="stat"><span>平均跟卖</span><b>0</b></div>
+        </div>
+      </section>
+
+      <section class="panel import-panel">
+        <h2>导入 / 导出</h2>
+        <label class="upload-box" id="uploadBox" for="fileInput">
+          <strong>导入表格数据</strong>
+          <span>点击选择，或将 .xlsx / .xls / .csv / .tsv 拖入这里</span>
+        </label>
+        <input id="fileInput" type="file" accept=".xlsx,.xls,.csv,.tsv" />
+        <div class="row-actions import-actions">
+          <button class="secondary" id="exportCsv" disabled>导出筛选结果 CSV</button>
+          <button class="ghost" id="resetAll">重置筛选</button>
+        </div>
+        <div class="row-actions config-actions">
+          <button class="ghost" id="importConfig" type="button">读取控制台配置</button>
+          <button class="ghost" id="exportConfig" type="button">导出控制台配置</button>
+        </div>
+        <input id="configInput" type="file" accept=".json,application/json" />
+        <label class="field rate-field">
+          <span>汇率设置：1 CNY = ? ₽</span>
+          <input id="exchangeRate" type="number" min="0" step="0.01" value="12.5" />
+        </label>
+        <p class="hint" id="fileHint">尚未导入数据。Excel 解析使用 SheetJS CDN，CSV 可离线解析。</p>
+      </section>
+
+
+      <section class="panel conclusion-panel compact-panel">
+        <h2>自动结论</h2>
+        <div id="conclusionBox" class="conclusion"><p class="empty">等待导入数据。</p></div>
+      </section>
+
+      <section class="panel category-panel compact-panel">
+        <h2>类目机会排名</h2>
+        <div class="category-list" id="categoryList"><p class="empty">导入数据后生成类目排名。</p></div>
+      </section>
+
+
+      <section class="panel filters-panel">
+        <h2>搜索 / 筛选</h2>
+        <label class="field">
+          <span>关键词</span>
+          <input id="keyword" placeholder="标题 / SKU / 品牌 / 类目" />
+        </label>
+        <label class="field">
+          <span>类目</span>
+          <select id="categoryFilter"><option value="">全部类目</option></select>
+        </label>
+        <div class="two-col">
+          <label class="field"><span>卖家类型</span><select id="sellerFilter"><option value="">全部类型</option></select></label>
+          <label class="field"><span>品牌</span><select id="brandFilter"><option value="">全部品牌</option><option value="__NO_BRAND__">无品牌</option></select></label>
+        </div>
+        <div class="two-col">
+          <label class="field"><span>最低机会分</span><input id="minScore" type="number" min="0" max="100" value="0" /></label>
+          <label class="field"><span>最低周销量</span><input id="minWeekly" type="number" min="0" value="0" /></label>
+        </div>
+        <div class="two-col">
+          <label class="field"><span>最低跟卖数</span><input id="minFollowers" type="number" min="0" placeholder="不限" /></label>
+          <label class="field"><span>最高广告占比%</span><input id="maxAdPct" type="number" min="0" max="100" placeholder="不限" /></label>
+        </div>
+        <div class="two-col">
+          <label class="field"><span>最高重量/g</span><input id="maxWeight" type="number" min="0" placeholder="不限" /></label>
+          <label class="field"><span>最高付费推广天数</span><input id="maxAdDays" type="number" min="0" placeholder="不限" /></label>
+        </div>
+        <div class="two-col">
+          <label class="field"><span>最低成交率%</span><input id="minConv" type="number" min="0" placeholder="不限" /></label>
+          <label class="field"><span>最高成交率%</span><input id="maxConv" type="number" min="0" placeholder="不限" /></label>
+        </div>
+        <div class="two-col">
+          <label class="field"><span>最低展示量</span><input id="minImpressions" type="number" min="0" placeholder="不限" /></label>
+          <label class="field"><span>最低点击量</span><input id="minClicks" type="number" min="0" placeholder="不限" /></label>
+        </div>
+        <div class="two-col">
+          <label class="field"><span>最低展示转化率%</span><input id="minDisplayConv" type="number" min="0" placeholder="不限" /></label>
+          <label class="field"><span>最低搜索浏览量</span><input id="minSearchViews" type="number" min="0" placeholder="不限" /></label>
+        </div>
+        <div class="two-col">
+          <label class="field"><span>商品创建时间≤天</span><input id="maxAge" type="number" min="0" placeholder="不限" /></label>
+          <label class="field"><span>最低周转动态</span><input id="turnoverFilter" type="number" min="0" placeholder="不限" /></label>
+        </div>
+        <div class="two-col">
+          <label class="field"><span>最低跟卖价</span><input id="minFollowerPrice" type="number" min="0" placeholder="不限" /></label>
+          <label class="field"><span>最高跟卖价</span><input id="maxFollowerPrice" type="number" min="0" placeholder="不限" /></label>
+        </div>
+        <div class="two-col">
+          <label class="field"><span>最低评分</span><input id="minRating" type="number" min="0" max="5" step="0.1" placeholder="不限" /></label>
+          <label class="field"><span>最低评论数</span><input id="minReviews" type="number" min="0" placeholder="不限" /></label>
+        </div>
+        <div class="three-col">
+          <label class="field"><span>最大长/mm</span><input id="maxLength" type="number" min="0" placeholder="不限" /></label>
+          <label class="field"><span>最大宽/mm</span><input id="maxWidth" type="number" min="0" placeholder="不限" /></label>
+          <label class="field"><span>最大高/mm</span><input id="maxHeight" type="number" min="0" placeholder="不限" /></label>
+        </div>
+        <div class="quick-tags">
+          <button data-preset="blue">蓝海机会</button>
+          <button data-preset="new">新品起量</button>
+          <button data-preset="organic">自然流</button>
+          <button data-preset="risk">高风险</button>
+        </div>
+      </section>
+
+      <section class="panel card-fields-panel">
+        <h2>商品卡数据显示</h2>
+        <p class="mini-hint">勾选后会显示在商品卡数据区，可勾选显示字段，也可以按住左侧手柄拖拽排序；商品卡显示顺序会同步变化。</p>
+        <div class="field-checks" id="cardFieldChecks"></div>
+      </section>
+
+      <section class="panel mapping-panel is-hidden" id="mappingPanel">
+        <div class="panel-titleline">
+          <h2>字段映射</h2>
+          <button class="ghost tiny" id="toggleMapping">收起</button>
+        </div>
+        <div class="mapping-grid" id="mappingGrid"></div>
+        <button class="primary full" id="applyMapping">重新分析</button>
+      </section>
+
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="left-tools">
+          <button class="icon-btn menu-btn" id="openSidebar" title="打开/收起控制台">☰</button>
+          <div>
+            <div class="eyebrow">商品列表优先视图</div>
+            <h2 id="mainTitle">请先导入数据</h2>
+          </div>
+        </div>
+        <div class="right-tools">
+          <select id="sortBy" title="排序">
+            <option value="score-desc">机会分 ↓</option>
+            <option value="weekly-desc">周销量 ↓</option>
+            <option value="revenue-desc">月销售额 ↓</option>
+            <option value="followers-asc">跟卖数 ↑</option>
+            <option value="ad-asc">广告占比 ↑</option>
+            <option value="price-asc">价格 ↑</option>
+          </select>
+          <button class="view-btn is-active" data-view="card">卡片</button>
+          <button class="view-btn" data-view="table">表格</button>
+        </div>
+      </header>
+
+      <section class="list-status" id="listStatus">导入表格后，这里会显示商品列表。</section>
+      <section class="product-grid" id="productGrid"></section>
+      <section class="table-wrap is-hidden" id="tableWrap">
+        <table id="productTable"><thead></thead><tbody></tbody></table>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal is-hidden" id="detailModal" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <button class="icon-btn modal-close" id="modalClose">×</button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
